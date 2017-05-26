@@ -1,74 +1,118 @@
-// Code to simulate the translation process based on explicit diffusion and mass action properties of tRNAs, ribosome and mRNAs.
-
-/*
- To compile and run the code run:
- 
-	g++ main.cpp -o test
-	./test
- 
-*/
-
-// Declaring Header Files
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <cstdio>
 #include <cstdlib>
-#include <cmath>
-#include <ctime>
-#include <sys/time.h>
-#include <cstring>
 
 // Fixed parameters
-#define MAX_GENES 5000				// Maximum number of genes supported
-#define MAX_GENE_LEN_ALLW 5000		// Maximum allowed gene length in codons
-#define MAX_TIME 2400000			// Maximum time of the simulation
-#define char_len_tRNA 1.5e-8		// Characteristic length of tRNA
-#define char_len_ribo 3e-8			// Characteristic length of ribosome
-#define char_time_tRNA 5.719e-4		// Characteristic time of movement for tRNA (4.45e-7 * 1285.1)
-#define char_time_ribo 5e-4			// Characteristic time of movement for tRNA
+#define MAX_GENES 5000                   // Maximum number of genes supported
+#define MAX_GENE_LEN_ALLW 5000           // Maximum allowed gene length in codons
+
 
 // Default global variables
-int seed = 1;						// Seed for RNG
-int n_genes = 1;					// Number of genes
-int tot_ribo = 2e5;					// Total ribosomes
-int tot_tRNA = 3.3e6;				// Total tRNAs
-int tot_mRNA = 0;					// Total mRNA (initialization)
-double tot_space = 4.2e-17;			// Total space within a cell
-double avail_space_t = 1.24e7;		// Available space for tRNAs
-double avail_space_r = 1.56e6;		// Available space for ribosomes
-double tot_time = 1500;				// Total time for simulation
-double time_thres = 1000;			// Threshold time for analysis of e_times
+int seed = 1;                   // Seed for RNG
+int n_genes = 5000;              // Number of genes
+
 
 // Run options
-int printOpt[7] = {0,0,0,0,0,0,0};
-char out_prefix[150] = "output";	// Prefix for output file names
-char out_file[150];
-char fasta_file[150] = "example/input/S.cer.genom";
-char code_file[150] = "example/input/S.cer.tRNA";
-
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Associate functions
-// To shuffle the elements of an array
-// (Each function that doesn't need to return a value should be void)
-
-void shuffle (int *array, size_t n){
-    if (n > 1){
-        size_t i;
-        for (i = 0; i < n - 1; i++){
-            size_t j = i + rand() / (RAND_MAX / (n - i) + 1); //generates random number between 1 and n?
-            int t = array[j];
-            array[j] = array[i];
-            array[i] = t;
-        }
-    }
-}
+char fasta_file[150] = "../example/input/S.cer.genom";
+char code_file[150] = "../example/input/S.cer.tRNA";
 
 // Create ribosome and mRNA based structures
+typedef struct
+{	int seq[MAX_GENE_LEN_ALLW];		// Codon sequence of the gene
+    int len;						// Length of the gene
+    int exp;						// Gene expression level
+    double ini_prob;				// Initiation probability of the mRNA
+} gene;
 
-int main() {
-    return 0;
+typedef struct
+{   char codon;                // Codon
+    int tid;                     // tRNA id
+    int gcn;                     // tRNA gene copy number
+    double wobble;                // Wobble parameter
+} trna;
 
+
+// Reading the processed sequence file
+int Read_FASTA_File(char *filename, gene *Gene)
+{	FILE *fh;
+    int c1=0;  // Represents line number
+    char curr_char;
+    
+    fh=fopen(filename, "r");
+    
+    if(!fh)					// Check if file exists
+    {	std::cout <<"\nModified FASTA/Sequence File Doesn't Exist\n" << std::endl;
+        //Help_out();
+        exit(1);
+    }
+    
+    fscanf(fh,"%lf",&Gene[c1].ini_prob);
+    
+    do
+    {	fscanf(fh,"%d",&Gene[c1].exp);
+        
+        int c2 = 0; // Represents number of sequence
+        do
+        {	fscanf(fh,"%d",&Gene[c1].seq[c2]);
+            c2++;
+            curr_char = fgetc(fh);
+        }while(curr_char != '\n');
+        Gene[c1].len = c2;
+        
+        c1++;
+        //std::cout <<c1<< std::endl;
+    }while(fscanf(fh,"%lf",&Gene[c1].ini_prob) ==1);
+    return(0);
+}
+
+
+ // Read in tRNA file
+ int Read_tRNA_File(char *filename, trna *cTRNA)
+{	FILE *fh;
+    int c1=0;
+    //char curr_char;
+ 
+    fh=fopen(filename, "r");
+ 
+    if(!fh)					// Check if file exists
+    {	std::cout << "\ntRNA File Doesn't Exist\n" << std::endl;
+        //Help_out();
+        exit(1);
+    }
+
+    while(fscanf(fh,"%s",&cTRNA[c1].codon)==1)
+    {	fscanf(fh,"%d%d%lf",&cTRNA[c1].tid,&cTRNA[c1].gcn,&cTRNA[c1].wobble);
+        c1++;
+        std::cout << c1 << std::endl;
+    }
+    return(0);
+}
+ 
+
+int main(int argc, char *argv[]){
+    
+    // User specified parameters for quick test
+    gene *Gene = new gene[n_genes];
+    if(Gene == NULL)
+    {	std::cout << "Too many genes\nOut of memory\n" << std::endl;
+        exit(1);
+    }
+    
+    // Initialize the various sturctures
+    trna *cTRNA = new trna[61];
+    if(cTRNA == NULL)
+    {   std::cout << "Too many tRNAs\nOut of memory\n" << std::endl;
+        exit(1);
+    }
+    
+    // Read in the numeric seq
+    Read_FASTA_File(fasta_file, Gene);
+    
+    // Read in the trna code file
+    Read_tRNA_File(code_file, cTRNA);
+    
 }
 
